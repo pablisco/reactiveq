@@ -1,4 +1,7 @@
 package com.pablisco.typedbus;
 
-public class TypedBus {
+public interface TypedBus<T> {
+
+    void messageAll(TypedBusMessage<T> message);
+
 }

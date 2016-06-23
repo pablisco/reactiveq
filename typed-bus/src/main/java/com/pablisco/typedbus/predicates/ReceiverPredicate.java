@@ -1,4 +1,4 @@
-package com.pablisco.typedbus;
+package com.pablisco.typedbus.predicates;
 
 /**
  * Used to determine if an object is valid or not.

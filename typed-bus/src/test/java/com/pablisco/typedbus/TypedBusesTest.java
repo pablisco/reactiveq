@@ -1,5 +1,7 @@
 package com.pablisco.typedbus;
 
+import com.pablisco.typedbus.providers.SubscriberProvider;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -7,10 +9,10 @@ import org.mockito.Mock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-public class ReceiverProvidersTest {
+public class TypedBusesTest {
 
     @Mock
-    private Iterable<String> mockIterable;
+    private SubscriberProvider mockSubscriberProvider;
 
     @Before
     public void setUp() throws Exception {
@@ -18,9 +20,9 @@ public class ReceiverProvidersTest {
     }
 
     @Test
-    public void createsIterableProvider() throws Exception {
-        final ReceiverProvider iterableProvider = ReceiverProviders.providerFrom(mockIterable);
-        assertThat(iterableProvider).isInstanceOf(ReceiverProvider.class);
+    public void canCreateBus() throws Exception {
+        final TypedBus bus = TypedBuses.typedBus(mockSubscriberProvider);
+        assertThat(bus).isInstanceOf(TypedBusImpl.class);
     }
 
 }
