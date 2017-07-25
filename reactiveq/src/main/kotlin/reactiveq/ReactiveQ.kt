@@ -28,27 +28,27 @@ class ReactiveQ private constructor() {
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> getConnection(type: KClass<T>) : Connection<T>
         = connections.getOrPut(type) { Connection<T>() } as Connection<T>
+
     private class Connection<T : Any> {
 
-        private val receivers = mutableListOf<(T) -> Unit>()
+        private val receivers = DetachableQueue<(T) -> Unit>()
 
         @Suppress("UNCHECKED_CAST")
         fun connect(receiver: (T) -> Unit) : Closeable {
-            receivers.add(receiver)
-            return ReceiverClosable(this, receiver)
+            val detachable = receivers.push(receiver)
+            return ReceiverClosable(detachable)
         }
-
-        fun remove(receiver: (T) -> Unit)
-            = receivers.remove(receiver)
 
         fun emit(value: T)
             = receivers.forEach { it(value) }
 
     }
 
-    private class ReceiverClosable<T : Any>(private val connection: Connection<T>, private val receiver: (T) -> Unit) : Closeable {
+    private class ReceiverClosable(
+        private val receiver: Detachable
+    ) : Closeable {
         override fun close() {
-            connection.remove(receiver)
+            receiver.detach()
         }
     }
 
