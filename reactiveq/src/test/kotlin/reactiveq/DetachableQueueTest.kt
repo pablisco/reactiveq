@@ -6,8 +6,7 @@ import org.junit.Test
 
 class DetachableQueueTest {
 
-    @Test
-    fun `should be able to add one item`() {
+    @Test fun `should be able to add one item`() {
         val queue = DetachableQueue<String>()
 
         queue.push("some value")
@@ -25,8 +24,7 @@ class DetachableQueueTest {
         assertThat(queue).containsOnly("some value", "other value")
     }
 
-    @Test
-    fun `should be able to add three items`() {
+    @Test fun `should be able to add three items`() {
         val queue = DetachableQueue<String>()
 
         queue.push("some value")
@@ -36,8 +34,7 @@ class DetachableQueueTest {
         assertThat(queue).containsOnly("some value", "other value", "one more value")
     }
 
-    @Test
-    fun `should fail if asking for too many items`() {
+    @Test fun `should fail if asking for too many items`() {
         val queue = DetachableQueue<String>()
 
         try {
@@ -48,8 +45,7 @@ class DetachableQueueTest {
         }
     }
 
-    @Test
-    fun `should allow to detach one element from list`() {
+    @Test fun `should allow to detach one element from list`() {
         val queue = DetachableQueue<String>()
 
         val detachable = queue.push("some value")
@@ -58,8 +54,7 @@ class DetachableQueueTest {
         assertThat(queue).isEmpty()
     }
 
-    @Test
-    fun `should allow to detach one element from list of two`() {
+    @Test fun `should allow to detach one element from list of two`() {
         val queue = DetachableQueue<String>()
 
         queue.push("some value")
@@ -69,8 +64,7 @@ class DetachableQueueTest {
         assertThat(queue).containsOnly("some value")
     }
 
-    @Test
-    fun `should be able to add more values after removing last`() {
+    @Test fun `should be able to add more values after removing last`() {
         val queue = DetachableQueue<String>()
 
         queue.push("some value")
@@ -82,14 +76,44 @@ class DetachableQueueTest {
         assertThat(queue).containsOnly("some value", "other value", "some other value")
     }
 
-    @Test
-    fun `should be able to get the size of the queue`() {
+    @Test fun `should be able to get the size of the queue`() {
         val queue = DetachableQueue<String>()
 
         queue.push("some value")
         queue.push("other value")
 
         assertThat(queue.size).isEqualTo(2)
+    }
+
+    @Test fun `should remove faster than List`() {
+        val list = mutableListOf<String>()
+        val removables = mutableListOf<String>()
+        val queue = DetachableQueue<String>()
+        val detachableList = mutableListOf<Detachable>()
+        (1..10000).forEach {
+            val item = "value $it"
+            list += item
+            removables += item
+            detachableList += queue.push(item)
+        }
+
+        "list %d ns".measure {
+            removables.forEach { list.remove(it) }
+        }
+        assertThat(list).isEmpty()
+
+        "queue: %d ns".measure {
+            detachableList.forEach { it.detach() }
+        }
+        assertThat(queue).isEmpty()
+
+    }
+
+    fun String.measure(f: () -> Unit) {
+        val start = System.currentTimeMillis()
+        f()
+        val length = System.currentTimeMillis() - start
+        println(format(length))
     }
 
 }
