@@ -6,7 +6,9 @@ import org.junit.Test
 class ReactiveQTest {
 
     private val queue: ReactiveQ = ReactiveQ()
+
     private val strings by lazy { queue.connect<String>() }
+    private val charSequences by lazy { queue.connect<CharSequence>() }
     private val ints by lazy { queue.connect<Int>() }
 
     @Test fun `should create connection and receive emitted value`() {
@@ -42,23 +44,23 @@ class ReactiveQTest {
     }
 
     @Test fun `should emit values from emitter`() {
-        strings.onReceive { "some value" }
+        strings.onFetch { "some value" }
 
-        val results = strings.receive()
+        val results = strings.fetch()
         assertThat(results).isNotEmpty()
     }
 
     @Test fun `should receive exception from emitter`() {
         val expectedException = Exception()
-        strings.onReceive { throw expectedException }
+        strings.onFetch { throw expectedException }
 
-        val items = strings.receive()
+        val items = strings.fetch()
 
         assertThat(items[0].exception).isEqualTo(expectedException)
     }
 
     @Test fun `should be able to query Responder`() {
-        strings.onRespond { query: String -> "some $query" }
+        strings.onQuery { query: String -> "some $query" }
 
         val result = strings.query<String, String>("value")
 
