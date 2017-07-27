@@ -24,9 +24,9 @@ class ReactiveQ private constructor() {
         connections.getOrPut(type) { Connection<T>() } as Connector<T>
 
     interface Connector<T> {
-        fun onEmit(receiver: (T) -> Unit) : Closeable
-        fun onFetch(emitter: () -> T) : Closeable
-        fun <P> onQuery(outType: Class<P>, responder: (T) -> P) : Closeable
+        fun onEmit(onEmit: (T) -> Unit) : Closeable
+        fun onFetch(onFetch: () -> T) : Closeable
+        fun <P> onQuery(outType: Class<P>, onQuery: (T) -> P) : Closeable
         fun emit(value: T) : Unit
         fun fetch(): List<Result<T>>
         fun <P> query(outType: Class<P>, query: T) : List<Result<P>>
@@ -38,14 +38,14 @@ class ReactiveQ private constructor() {
         private val onFetches = mutableSetOf<() -> T>()
         private val onQueries = mutableSetOf<ResponderWrapper<T, *>>()
 
-        override fun onEmit(receiver: (T) -> Unit) : Closeable =
-            onEmits.addWithClosable(receiver)
+        override fun onEmit(onEmit: (T) -> Unit) : Closeable =
+            onEmits.addWithClosable(onEmit)
 
-        override fun onFetch(emitter: () -> T) : Closeable =
-            onFetches.addWithClosable(emitter)
+        override fun onFetch(onFetch: () -> T) : Closeable =
+            onFetches.addWithClosable(onFetch)
 
-        override fun <P> onQuery(outType: Class<P>, responder: (T) -> P) : Closeable =
-            onQueries.addWithClosable(ResponderWrapper(outType, responder))
+        override fun <P> onQuery(outType: Class<P>, onQuery: (T) -> P) : Closeable =
+            onQueries.addWithClosable(ResponderWrapper(outType, onQuery))
 
         override fun emit(value: T) =
             onEmits.forEach { it(value) }
@@ -58,11 +58,11 @@ class ReactiveQ private constructor() {
             onQueries
                 .filter { it.outType == outType }
                 .map { it as ResponderWrapper<T, P> }
-                .map { safeResult { it.responder(query) } }
+                .map { safeResult { it.onQuery(query) } }
 
         private data class ResponderWrapper<in T, P>(
             val outType: Class<P>,
-            val responder: (T) -> P
+            val onQuery: (T) -> P
         )
 
         fun <T> safeResult(f: () -> T) : Result<T> =
@@ -75,8 +75,10 @@ class ReactiveQ private constructor() {
 
 }
 
-inline fun <T, reified P> ReactiveQ.Connector<T>.onQuery(noinline responder: (T) -> P) : Closeable =
-    onQuery(P::class.java, responder)
+inline fun <T, reified P> ReactiveQ.Connector<T>.onQuery(noinline onQuery: (T) -> P) : Closeable =
+    onQuery(P::class.java, onQuery)
 
 inline fun <T, reified P> ReactiveQ.Connector<T>.query(query: T) : List<ReactiveQ.Result<P>> =
     query(P::class.java, query)
+
+inline operator fun <T> ReactiveQ.Connector<T>.invoke(f: ReactiveQ.Connector<T>.() -> Unit) = f(this)

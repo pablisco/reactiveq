@@ -34,10 +34,14 @@ class ReactiveQTest {
         var text : String? = null
         var number : Int? = null
 
-        strings.onEmit { text = it }
-        strings.emit("some value")
-        ints.onEmit { number = it }
-        ints.emit(123)
+        strings {
+            onEmit { text = it }
+            emit("some value")
+        }
+        ints {
+            onEmit { number = it }
+            emit(123)
+        }
 
         assertThat(text).isEqualTo("some value")
         assertThat(number).isEqualTo(123)
