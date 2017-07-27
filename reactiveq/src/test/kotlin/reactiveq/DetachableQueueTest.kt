@@ -87,10 +87,11 @@ class DetachableQueueTest {
 
     @Test fun `should remove faster than List`() {
         val list = mutableListOf<String>()
+        val set = mutableSetOf<String>()
         val removables = mutableListOf<String>()
         val queue = DetachableQueue<String>()
         val detachableList = mutableListOf<Detachable>()
-        (1..10000).forEach {
+        (1..100000).forEach {
             val item = "value $it"
             list += item
             removables += item
@@ -107,6 +108,9 @@ class DetachableQueueTest {
         }
         assertThat(queue).isEmpty()
 
+        "set: %d ns".measure {
+            removables.forEach { set.remove(it) }
+        }
     }
 
     fun String.measure(f: () -> Unit) {
