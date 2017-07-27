@@ -2,10 +2,6 @@ package reactiveq
 
 import java.io.Closeable
 
-typealias OnEmitReactor<T> = (T) -> Unit
-typealias OnFetchReactor<T> = () -> T
-typealias OnQueryReactor<T, P> = (T) -> P
-
 class ReactiveQ {
 
     private val connections = mutableMapOf<Class<*>, Connection<*>>()
@@ -25,9 +21,9 @@ data class Result<out T>(
 
 interface Connection<T> {
 
-    fun onEmit(onEmitReactor: OnEmitReactor<T>) : Closeable
-    fun onFetch(onFetchReactor: OnFetchReactor<T>) : Closeable
-    fun <P> onQuery(outType: Class<P>, onQueryReactor: OnQueryReactor<T, P>) : Closeable
+    fun onEmit(onEmitReactor: (T) -> Unit) : Closeable
+    fun onFetch(onFetchReactor: () -> T) : Closeable
+    fun <P> onQuery(outType: Class<P>, onQueryReactor: (T) -> P) : Closeable
     fun onReactorsChanged(f: (ReactorCounter) -> Unit) : Closeable
 
     fun emit(value: T) : Unit
@@ -37,18 +33,18 @@ interface Connection<T> {
 
 internal class ConcreteConnection<T> : Connection<T> {
 
-    private val onEmits = mutableSetOf<OnEmitReactor<T>>()
-    private val onFetches = mutableSetOf<OnFetchReactor<T>>()
+    private val onEmits = mutableSetOf<(T) -> Unit>()
+    private val onFetches = mutableSetOf<() -> T>()
     private val onQueries = mutableSetOf<TypedReactor<T, *>>()
     private val onReactorChangedSet = mutableSetOf<(ReactorCounter) -> Unit>()
 
-    override fun onEmit(onEmitReactor: OnEmitReactor<T>) : Closeable =
+    override fun onEmit(onEmitReactor: (T) -> Unit) : Closeable =
         onEmits.addWithClosable(onEmitReactor)
 
-    override fun onFetch(onFetchReactor: OnFetchReactor<T>) : Closeable =
+    override fun onFetch(onFetchReactor: () -> T) : Closeable =
         onFetches.addWithClosable(onFetchReactor)
 
-    override fun <P> onQuery(outType: Class<P>, onQueryReactor: OnQueryReactor<T, P>) : Closeable =
+    override fun <P> onQuery(outType: Class<P>, onQueryReactor: (T) -> P) : Closeable =
         onQueries.addWithClosable(TypedReactor(outType, onQueryReactor))
 
     override fun onReactorsChanged(f: (ReactorCounter) -> Unit): Closeable =
@@ -69,7 +65,7 @@ internal class ConcreteConnection<T> : Connection<T> {
 
     private data class TypedReactor<in T, P>(
         val outType: Class<P>,
-        val onQuery: OnQueryReactor<T, P>
+        val onQuery: (T) -> P
     )
 
     fun <T> safeResult(f: () -> T) : Result<T> =
@@ -104,9 +100,10 @@ internal class ConcreteConnection<T> : Connection<T> {
 data class ReactorCounter(
     val onEmitCount: Int,
     val onFetchCount: Int,
-    val onQueryCount: Int,
+    val onQueryCount: Int
+) {
     val totalCount: Int = onEmitCount + onFetchCount + onQueryCount
-)
+}
 
 inline fun <T, reified P> Connection<T>.onQuery(noinline onQuery: (T) -> P) : Closeable =
     onQuery(P::class.java, onQuery)

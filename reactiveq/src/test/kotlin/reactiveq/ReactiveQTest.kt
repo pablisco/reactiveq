@@ -77,6 +77,7 @@ class ReactiveQTest {
         strings.onEmit {  }
 
         assertThat(counter).isEqualTo(ReactorCounter(1, 0, 0))
+        assertThat(counter?.totalCount).isEqualTo(1)
     }
 
     @Test
@@ -87,6 +88,7 @@ class ReactiveQTest {
         strings.onEmit {  }.close()
 
         assertThat(counter).isEqualTo(ReactorCounter(0, 0, 0))
+        assertThat(counter?.totalCount).isEqualTo(0)
     }
 
 }
