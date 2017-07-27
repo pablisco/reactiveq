@@ -2,13 +2,7 @@ package reactiveq
 
 import java.io.Closeable
 
-class ReactiveQ private constructor() {
-
-    companion object {
-        operator fun invoke() : ReactiveQ {
-            return ReactiveQ()
-        }
-    }
+class ReactiveQ {
 
     private val connections = mutableMapOf<Class<*>, Connector<*>>()
 
@@ -24,19 +18,23 @@ class ReactiveQ private constructor() {
         connections.getOrPut(type) { Connection<T>() } as Connector<T>
 
     interface Connector<T> {
+
         fun onEmit(onEmit: (T) -> Unit) : Closeable
         fun onFetch(onFetch: () -> T) : Closeable
         fun <P> onQuery(outType: Class<P>, onQuery: (T) -> P) : Closeable
+        fun onReactorsChanged(f: (ReactorCounter) -> Unit) : Closeable
+
         fun emit(value: T) : Unit
         fun fetch(): List<Result<T>>
         fun <P> query(outType: Class<P>, query: T) : List<Result<P>>
     }
 
-    private class Connection<T> : Connector<T> {
+    internal class Connection<T> : Connector<T> {
 
         private val onEmits = mutableSetOf<(T) -> Unit>()
         private val onFetches = mutableSetOf<() -> T>()
         private val onQueries = mutableSetOf<ResponderWrapper<T, *>>()
+        private val onReactorChangedSet = mutableSetOf<(ReactorCounter) -> Unit>()
 
         override fun onEmit(onEmit: (T) -> Unit) : Closeable =
             onEmits.addWithClosable(onEmit)
@@ -46,6 +44,9 @@ class ReactiveQ private constructor() {
 
         override fun <P> onQuery(outType: Class<P>, onQuery: (T) -> P) : Closeable =
             onQueries.addWithClosable(ResponderWrapper(outType, onQuery))
+
+        override fun onReactorsChanged(f: (ReactorCounter) -> Unit): Closeable =
+            onReactorChangedSet.addWithClosable(f)
 
         override fun emit(value: T) =
             onEmits.forEach { it(value) }
@@ -68,10 +69,34 @@ class ReactiveQ private constructor() {
         fun <T> safeResult(f: () -> T) : Result<T> =
             try { Result(f()) } catch (e: Exception) { Result(exception = e) }
 
+        private val reactorCounter
+            get() =  ReactorCounter(
+                onEmits.size,
+                onFetches.size,
+                onQueries.size
+            )
+
         private fun <T> MutableCollection<T>.addWithClosable(item: T) =
-            add(item).let { Closeable { remove(item) } }
+            add(item).let {
+                reportReactorChanges()
+                Closeable {
+                    remove(item)
+                    reportReactorChanges()
+                }
+            }
+
+        private fun reportReactorChanges() {
+            onReactorChangedSet.forEach { it(reactorCounter) }
+        }
 
     }
+
+    data class ReactorCounter(
+        val onEmitCount: Int,
+        val onFetchCount: Int,
+        val onQueryCount: Int,
+        val totalCount: Int = onEmitCount + onFetchCount + onQueryCount
+    )
 
 }
 

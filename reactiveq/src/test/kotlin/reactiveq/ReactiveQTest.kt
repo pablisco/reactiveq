@@ -8,7 +8,6 @@ class ReactiveQTest {
     private val queue: ReactiveQ = ReactiveQ()
 
     private val strings by lazy { queue.connect<String>() }
-    private val charSequences by lazy { queue.connect<CharSequence>() }
     private val ints by lazy { queue.connect<Int>() }
 
     @Test fun `should create connection and receive emitted value`() {
@@ -69,6 +68,25 @@ class ReactiveQTest {
         val result = strings.query<String, String>("value")
 
         assertThat(result[0].value).isEqualTo("some value")
+    }
+
+    @Test fun `should notify when Reactor added`() {
+        var counter: ReactiveQ.ReactorCounter? = null
+        strings.onReactorsChanged { counter = it }
+
+        strings.onEmit {  }
+
+        assertThat(counter).isEqualTo(ReactiveQ.ReactorCounter(1, 0, 0))
+    }
+
+    @Test
+    fun `should report when Reactor is removed`() {
+        var counter: ReactiveQ.ReactorCounter? = null
+        strings.onReactorsChanged { counter = it }
+
+        strings.onEmit {  }.close()
+
+        assertThat(counter).isEqualTo(ReactiveQ.ReactorCounter(0, 0, 0))
     }
 
 }
