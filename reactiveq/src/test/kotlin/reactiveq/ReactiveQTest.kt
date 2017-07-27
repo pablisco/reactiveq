@@ -1,7 +1,6 @@
 package reactiveq
 
 import org.assertj.core.api.Assertions.*
-import org.assertj.core.api.Condition
 import org.junit.Test
 
 class ReactiveQTest {
@@ -10,8 +9,8 @@ class ReactiveQTest {
         val queue = ReactiveQ()
         var text : String? = null
 
-        queue.onEmit<String> { text = it }
-        queue.emit("some value")
+        queue.connect<String>().onEmit { text = it }
+        queue.connect<String>().emit("some value")
 
         assertThat(text).isEqualTo("some value")
     }
@@ -20,9 +19,9 @@ class ReactiveQTest {
         val queue = ReactiveQ()
         var text : String? = null
 
-        val connection = queue.onEmit<String> { text = it }
+        val connection = queue.connect<String>().onEmit { text = it }
         connection.close()
-        queue.emit("some value")
+        queue.connect<String>().emit("some value")
 
         assertThat(text).isNull()
     }
@@ -32,10 +31,10 @@ class ReactiveQTest {
         var text : String? = null
         var number : Int? = null
 
-        queue.onEmit<String> { text = it }
-        queue.onEmit<Int> { number = it }
-        queue.emit("some value")
-        queue.emit(123)
+        queue.connect<String>().onEmit { text = it }
+        queue.connect<Int>().onEmit { number = it }
+        queue.connect<String>().emit("some value")
+        queue.connect<Int>().emit(123)
 
         assertThat(text).isEqualTo("some value")
         assertThat(number).isEqualTo(123)
@@ -44,9 +43,9 @@ class ReactiveQTest {
     @Test fun `should emit values from emitter`() {
         val queue = ReactiveQ()
 
-        queue.onReceive { "some value" }
+        queue.connect<String>().onReceive { "some value" }
 
-        val results = queue.receive<String>()
+        val results = queue.connect<String>().receive()
         assertThat(results).isNotEmpty()
     }
 
@@ -54,9 +53,9 @@ class ReactiveQTest {
         val queue = ReactiveQ()
 
         val expectedException = Exception()
-        queue.onReceive<String> { throw expectedException }
+        queue.connect<String>().onReceive { throw expectedException }
 
-        val items = queue.receive<String>()
+        val items = queue.connect<String>().receive()
 
         assertThat(items[0].exception).isEqualTo(expectedException)
     }
@@ -64,9 +63,9 @@ class ReactiveQTest {
     @Test fun `should be able to query Responder`() {
         val queue = ReactiveQ()
 
-        queue.onRespond { query: String -> "some $query" }
+        queue.connect<String>().onRespond { query: String -> "some $query" }
 
-        val result = queue.query<String, String>("value")
+        val result = queue.connect<String>().query<String, String>("value")
 
         assertThat(result[0].value).isEqualTo("some value")
     }
