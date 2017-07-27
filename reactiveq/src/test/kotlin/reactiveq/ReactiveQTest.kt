@@ -71,22 +71,22 @@ class ReactiveQTest {
     }
 
     @Test fun `should notify when Reactor added`() {
-        var counter: ReactiveQ.ReactorCounter? = null
+        var counter: ReactorCounter? = null
         strings.onReactorsChanged { counter = it }
 
         strings.onEmit {  }
 
-        assertThat(counter).isEqualTo(ReactiveQ.ReactorCounter(1, 0, 0))
+        assertThat(counter).isEqualTo(ReactorCounter(1, 0, 0))
     }
 
     @Test
     fun `should report when Reactor is removed`() {
-        var counter: ReactiveQ.ReactorCounter? = null
+        var counter: ReactorCounter? = null
         strings.onReactorsChanged { counter = it }
 
         strings.onEmit {  }.close()
 
-        assertThat(counter).isEqualTo(ReactiveQ.ReactorCounter(0, 0, 0))
+        assertThat(counter).isEqualTo(ReactorCounter(0, 0, 0))
     }
 
 }
