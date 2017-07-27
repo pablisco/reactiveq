@@ -2,6 +2,10 @@ package reactiveq
 
 import java.io.Closeable
 
+typealias OnEmitReactor<T> = (T) -> Unit
+typealias OnFetchReactor<T> = () -> T
+typealias OnQueryReactor<T, P> = (T) -> P
+
 class ReactiveQ {
 
     private val connections = mutableMapOf<Class<*>, Connector<*>>()
@@ -19,9 +23,9 @@ class ReactiveQ {
 
     interface Connector<T> {
 
-        fun onEmit(onEmit: (T) -> Unit) : Closeable
-        fun onFetch(onFetch: () -> T) : Closeable
-        fun <P> onQuery(outType: Class<P>, onQuery: (T) -> P) : Closeable
+        fun onEmit(onEmitReactor: OnEmitReactor<T>) : Closeable
+        fun onFetch(onFetchReactor: OnFetchReactor<T>) : Closeable
+        fun <P> onQuery(outType: Class<P>, onQueryReactor: OnQueryReactor<T, P>) : Closeable
         fun onReactorsChanged(f: (ReactorCounter) -> Unit) : Closeable
 
         fun emit(value: T) : Unit
@@ -31,19 +35,19 @@ class ReactiveQ {
 
     internal class Connection<T> : Connector<T> {
 
-        private val onEmits = mutableSetOf<(T) -> Unit>()
-        private val onFetches = mutableSetOf<() -> T>()
-        private val onQueries = mutableSetOf<ResponderWrapper<T, *>>()
+        private val onEmits = mutableSetOf<OnEmitReactor<T>>()
+        private val onFetches = mutableSetOf<OnFetchReactor<T>>()
+        private val onQueries = mutableSetOf<TypedReactor<T, *>>()
         private val onReactorChangedSet = mutableSetOf<(ReactorCounter) -> Unit>()
 
-        override fun onEmit(onEmit: (T) -> Unit) : Closeable =
-            onEmits.addWithClosable(onEmit)
+        override fun onEmit(onEmitReactor: OnEmitReactor<T>) : Closeable =
+            onEmits.addWithClosable(onEmitReactor)
 
-        override fun onFetch(onFetch: () -> T) : Closeable =
-            onFetches.addWithClosable(onFetch)
+        override fun onFetch(onFetchReactor: OnFetchReactor<T>) : Closeable =
+            onFetches.addWithClosable(onFetchReactor)
 
-        override fun <P> onQuery(outType: Class<P>, onQuery: (T) -> P) : Closeable =
-            onQueries.addWithClosable(ResponderWrapper(outType, onQuery))
+        override fun <P> onQuery(outType: Class<P>, onQueryReactor: OnQueryReactor<T, P>) : Closeable =
+            onQueries.addWithClosable(TypedReactor(outType, onQueryReactor))
 
         override fun onReactorsChanged(f: (ReactorCounter) -> Unit): Closeable =
             onReactorChangedSet.addWithClosable(f)
@@ -58,12 +62,12 @@ class ReactiveQ {
         override fun <P> query(outType: Class<P>, query: T) : List<Result<P>> =
             onQueries
                 .filter { it.outType == outType }
-                .map { it as ResponderWrapper<T, P> }
+                .map { it as TypedReactor<T, P> }
                 .map { safeResult { it.onQuery(query) } }
 
-        private data class ResponderWrapper<in T, P>(
+        private data class TypedReactor<in T, P>(
             val outType: Class<P>,
-            val onQuery: (T) -> P
+            val onQuery: OnQueryReactor<T, P>
         )
 
         fun <T> safeResult(f: () -> T) : Result<T> =
