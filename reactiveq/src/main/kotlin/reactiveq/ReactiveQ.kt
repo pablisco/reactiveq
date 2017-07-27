@@ -1,7 +1,6 @@
 package reactiveq
 
 import java.io.Closeable
-import kotlin.reflect.KClass
 
 class ReactiveQ private constructor() {
 
@@ -11,42 +10,42 @@ class ReactiveQ private constructor() {
         }
     }
 
-    private val connections = mutableMapOf<KClass<*>, Connection<*>>()
+    private val connections = mutableMapOf<Class<*>, Connection<*>>()
 
-    inline fun <reified T : Any> onEmit(noinline receiver: (T) -> Unit) : Closeable =
-        onEmit(T::class, receiver)
+    inline fun <reified T> onEmit(noinline receiver: (T) -> Unit) : Closeable =
+        onEmit(T::class.java, receiver)
 
-    inline fun <reified T : Any> onReceive(noinline receiver: () -> T) : Closeable =
-        onReceive(T::class, receiver)
+    inline fun <reified T> onReceive(noinline receiver: () -> T) : Closeable =
+        onReceive(T::class.java, receiver)
 
-    inline fun <reified T : Any, reified P : Any> onRespond(noinline f: (T) -> P) : Closeable =
-        onRespond(T::class, P::class, f)
+    inline fun <reified T, reified P> onRespond(noinline f: (T) -> P) : Closeable =
+        onRespond(T::class.java, P::class.java, f)
 
-    fun <T : Any> onEmit(type: KClass<T>, receiver: (T) -> Unit) : Closeable =
+    fun <T> onEmit(type: Class<T>, receiver: (T) -> Unit) : Closeable =
         getConnection(type).onEmit(receiver)
 
-    fun <T : Any> onReceive(type: KClass<T>, emitter: () -> T) : Closeable =
+    fun <T> onReceive(type: Class<T>, emitter: () -> T) : Closeable =
         getConnection(type).onReceive(emitter)
 
-    fun <T : Any, P : Any> onRespond(inType: KClass<T>, outType: KClass<P>, responder: (T) -> P) : Closeable =
+    fun <T, P> onRespond(inType: Class<T>, outType: Class<P>, responder: (T) -> P) : Closeable =
         getConnection(inType).onRespond(outType, responder)
 
-    inline fun <reified T : Any> emit(value: T) =
-        emit(T::class, value)
+    inline fun <reified T> emit(value: T) =
+        emit(T::class.java, value)
 
-    inline fun <reified T : Any> receive(): List<Result<T>> =
-        receive(T::class)
+    inline fun <reified T> receive(): List<Result<T>> =
+        receive(T::class.java)
 
-    inline fun <reified T : Any, reified P : Any> query(query : T) : List<Result<P>> =
-        query(T::class, P::class, query)
+    inline fun <reified T, reified P> query(query : T) : List<Result<P>> =
+        query(T::class.java, P::class.java, query)
 
-    fun <T : Any> emit(type: KClass<T>, value: T) =
+    fun <T> emit(type: Class<T>, value: T) =
         getConnection(type).emit(value)
 
-    fun <T : Any> receive(type: KClass<T>): List<Result<T>> =
+    fun <T> receive(type: Class<T>): List<Result<T>> =
         getConnection(type).receive()
 
-    fun <T : Any, P : Any> query(inType: KClass<T>, outType: KClass<P>, query : T) : List<Result<P>> =
+    fun <T, P> query(inType: Class<T>, outType: Class<P>, query : T) : List<Result<P>> =
         getConnection(inType).query(outType, query)
 
     data class Result<out T>(
@@ -55,10 +54,10 @@ class ReactiveQ private constructor() {
     )
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T : Any> getConnection(type: KClass<T>) : Connection<T> =
+    private fun <T> getConnection(type: Class<T>) : Connection<T> =
         connections.getOrPut(type) { Connection<T>() } as Connection<T>
 
-    private class Connection<T : Any> {
+    private class Connection<T> {
 
         private val receivers = mutableSetOf<(T) -> Unit>()
         private val emitters = mutableSetOf<() -> T>()
@@ -70,7 +69,7 @@ class ReactiveQ private constructor() {
         fun onReceive(emitter: () -> T) : Closeable =
             emitters.addWithClosable(emitter)
 
-        fun <P : Any> onRespond(outType: KClass<P>, responder: (T) -> P) : Closeable =
+        fun <P> onRespond(outType: Class<P>, responder: (T) -> P) : Closeable =
             responders.addWithClosable(ResponderWrapper(outType, responder))
 
         fun emit(value: T) =
@@ -80,14 +79,14 @@ class ReactiveQ private constructor() {
             emitters.map(this::safeResult)
 
         @Suppress("UNCHECKED_CAST")
-        fun <P : Any> query(outType: KClass<P>, query: T) : List<Result<P>> =
+        fun <P> query(outType: Class<P>, query: T) : List<Result<P>> =
             responders
                 .filter { it.outType == outType }
                 .map { it as ResponderWrapper<T, P> }
                 .map { safeResult { it.responder(query) } }
 
-        private data class ResponderWrapper<in T : Any, P : Any>(
-            val outType: KClass<P>,
+        private data class ResponderWrapper<in T, P>(
+            val outType: Class<P>,
             val responder: (T) -> P
         )
 
