@@ -5,8 +5,9 @@ import org.junit.Test
 
 class ReactiveQTest {
 
+    private val queue: ReactiveQ = ReactiveQ()
+
     @Test fun `should create connection and receive emitted value`() {
-        val queue = ReactiveQ()
         var text : String? = null
 
         queue.connect<String>().onEmit { text = it }
@@ -16,7 +17,6 @@ class ReactiveQTest {
     }
 
     @Test fun `should stop receiving events after connection closed`() {
-        val queue = ReactiveQ()
         var text : String? = null
 
         val connection = queue.connect<String>().onEmit { text = it }
@@ -27,22 +27,21 @@ class ReactiveQTest {
     }
 
     @Test fun `should deliver two different types`() {
-        val queue = ReactiveQ()
         var text : String? = null
         var number : Int? = null
 
-        queue.connect<String>().onEmit { text = it }
-        queue.connect<Int>().onEmit { number = it }
-        queue.connect<String>().emit("some value")
-        queue.connect<Int>().emit(123)
+        with(queue) {
+            connect<String>().onEmit { text = it }
+            connect<Int>().onEmit { number = it }
+            connect<String>().emit("some value")
+            connect<Int>().emit(123)
+        }
 
         assertThat(text).isEqualTo("some value")
         assertThat(number).isEqualTo(123)
     }
 
     @Test fun `should emit values from emitter`() {
-        val queue = ReactiveQ()
-
         queue.connect<String>().onReceive { "some value" }
 
         val results = queue.connect<String>().receive()
@@ -50,8 +49,6 @@ class ReactiveQTest {
     }
 
     @Test fun `should receive exception from emitter`() {
-        val queue = ReactiveQ()
-
         val expectedException = Exception()
         queue.connect<String>().onReceive { throw expectedException }
 
@@ -61,8 +58,6 @@ class ReactiveQTest {
     }
 
     @Test fun `should be able to query Responder`() {
-        val queue = ReactiveQ()
-
         queue.connect<String>().onRespond { query: String -> "some $query" }
 
         val result = queue.connect<String>().query<String, String>("value")
