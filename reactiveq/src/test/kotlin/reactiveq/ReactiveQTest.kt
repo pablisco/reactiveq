@@ -5,41 +5,45 @@ import org.junit.Test
 
 class ReactiveQTest {
 
-    private val queue: ReactiveQ = ReactiveQ()
+    companion object {
+        private val INVALID_COUNTER = ReactorCounter<String>(-1, -1, -1)
+    }
 
-    private val strings by lazy { queue.connect<String>() }
-    private val ints by lazy { queue.connect<Int>() }
+    private val queue: ReactiveQ = ReactiveQ()
 
     @Test fun `should create connection and receive emitted value`() {
         var text : String? = null
 
-        strings.onEmit { text = it }
-        strings.emit("some value")
+        queue {
+            connect<String>().onSend { text = it }
+            send("some value")
+        }
 
         assertThat(text).isEqualTo("some value")
     }
 
     @Test fun `should stop receiving events after connection closed`() {
-        var text : String? = null
+        var text : String? = "not null"
 
-        val closable = strings.onEmit { text = it }
-        closable.close()
-        strings.emit("some value")
+        queue {
+            val closable = connect<String>().onSend { text = it }
+            closable.close()
+        }
 
-        assertThat(text).isNull()
+        queue.send("some value")
+
+        assertThat(text).isEqualTo("not null")
     }
 
     @Test fun `should deliver two different types`() {
         var text : String? = null
         var number : Int? = null
 
-        strings {
-            onEmit { text = it }
-            emit("some value")
-        }
-        ints {
-            onEmit { number = it }
-            emit(123)
+        queue {
+            connect<String>().onSend { text = it }
+            connect<Int>().onSend { number = it }
+            send("some value")
+            send(123)
         }
 
         assertThat(text).isEqualTo("some value")
@@ -47,48 +51,65 @@ class ReactiveQTest {
     }
 
     @Test fun `should emit values from emitter`() {
-        strings.onFetch { "some value" }
+        queue.connect<String>().onFetch { "some value" }
 
-        val results = strings.fetch()
-        assertThat(results).isNotEmpty()
+        val results = queue.fetch<String>()
+
+        assertThat(results).containsOnly(Result("some value"))
     }
 
     @Test fun `should receive exception from emitter`() {
         val expectedException = Exception()
-        strings.onFetch { throw expectedException }
 
-        val items = strings.fetch()
+        queue.connect<String>().onFetch { throw expectedException }
+        val items = queue.fetch<String>()
 
-        assertThat(items[0].exception).isEqualTo(expectedException)
+        assertThat(items).containsOnly(Result(expectedException))
     }
 
     @Test fun `should be able to query Responder`() {
-        strings.onQuery { query: String -> "some $query" }
+        queue.connect<String>().onQuery { query: String -> "some $query" }
 
-        val result = strings.query<String, String>("value")
-
-        assertThat(result[0].value).isEqualTo("some value")
+        val result = queue.query<String, String>("value")
+        assertThat(result).containsOnly(Result.Success("some value"))
     }
 
     @Test fun `should notify when Reactor added`() {
-        var counter: ReactorCounter? = null
-        strings.onReactorsChanged { counter = it }
+        var counter: ReactorCounter<String> = INVALID_COUNTER
 
-        strings.onEmit {  }
+        queue {
+            connect<ReactorCounter<String>>().onSend { counter = it }
+            connect<String>().onSend {  }
+        }
 
-        assertThat(counter).isEqualTo(ReactorCounter(1, 0, 0))
-        assertThat(counter?.totalCount).isEqualTo(1)
+        assertThat(counter).isEqualTo(ReactorCounter<String>(1, 0, 0))
     }
 
-    @Test
-    fun `should report when Reactor is removed`() {
-        var counter: ReactorCounter? = null
-        strings.onReactorsChanged { counter = it }
+    @Test fun `should report when Reactor is removed`() {
+        val counters: MutableList<ReactorCounter<String>> = mutableListOf()
 
-        strings.onEmit {  }.close()
+        queue {
+            connect<ReactorCounter<String>>().onSend { counters += it }
+            val closeable = connect<String>().onSend { }
+            closeable.close()
+        }
 
-        assertThat(counter).isEqualTo(ReactorCounter(0, 0, 0))
-        assertThat(counter?.totalCount).isEqualTo(0)
+        assertThat(counters).containsOnly(
+            ReactorCounter(0, 0, 0),
+            ReactorCounter(1, 0, 0),
+            ReactorCounter(0, 0, 0)
+        )
+    }
+
+    @Test fun `should react to variant reactors`() {
+        var text: CharSequence? = null
+
+        queue {
+            connect<CharSequence>().onSend { text = it }
+            send("some value")
+        }
+
+        assertThat(text).isEqualTo("some value")
     }
 
 }
