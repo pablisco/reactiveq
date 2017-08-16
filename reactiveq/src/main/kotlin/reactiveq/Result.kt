@@ -29,9 +29,9 @@ sealed class Result<out T> {
 
 }
 
-fun <T, R> Result<T>.flatMap(f: (T) -> Result<R>): Result<R> = fold({ Result.Failure(it) }, { f(it) })
-fun <T, R> Result<T>.map(f: (T) -> R): Result<R> = fold({ Result.Failure(it) }, { Success(f(it)) })
-fun <T> Result<T>.getOrElse(default: () -> T): T = fold({ default() }, { it })
-fun <T> Result<T>.recoverWith(f: (Throwable) -> Result<T>): Result<T> = fold({ f(it) }, { Success(it) })
-fun <T> Result<T>.recover(f: (Throwable) -> T): Result<T> = fold({ Success(f(it)) }, { Success(it) })
-fun <T> Result<T>.transform(s: (T) -> Result<T>, f: (Throwable) -> Result<T>): Result<T> = fold({ f(it) }, { flatMap(s) })
+inline fun <T, R> Result<T>.flatMap(crossinline f: (T) -> Result<R>): Result<R> = fold({ Result.Failure(it) }, { f(it) })
+inline fun <T, R> Result<T>.map(crossinline f: (T) -> R): Result<R> = fold({ Result.Failure(it) }, { Success(f(it)) })
+inline fun <T> Result<T>.getOrElse(crossinline default: () -> T): T = fold({ default() }, { it })
+inline fun <T> Result<T>.recoverWith(crossinline f: (Throwable) -> Result<T>): Result<T> = fold({ f(it) }, { Success(it) })
+inline fun <T> Result<T>.recover(crossinline f: (Throwable) -> T): Result<T> = fold({ Success(f(it)) }, { Success(it) })
+inline fun <T> Result<T>.transform(crossinline s: (T) -> Result<T>, crossinline f: (Throwable) -> Result<T>): Result<T> = fold({ f(it) }, { flatMap(s) })
