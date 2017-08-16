@@ -24,7 +24,7 @@ internal class InternalConnection<T>(
         onSendReactors.forEach { it(value) }
 
     fun fetch(): List<Result<T>> =
-        onFetchReactors.map { Result(it) }
+        onFetchReactors.map { it.asResult() }
 
     @Suppress("UNCHECKED_CAST")
     fun <P> query(outType: Class<P>, query: T): List<Result<P>> =

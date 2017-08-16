@@ -16,6 +16,7 @@ sealed class Result<out T> {
         fun <T> success(t: T) : Result<T> = Success(t)
 
         fun <T> failure(e: Throwable) : Result<T> = Failure(e)
+
     }
 
     fun <B> fold(fa: (Throwable) -> B, fb: (T) -> B): B =
@@ -35,3 +36,7 @@ inline fun <T> Result<T>.getOrElse(crossinline default: () -> T): T = fold({ def
 inline fun <T> Result<T>.recoverWith(crossinline f: (Throwable) -> Result<T>): Result<T> = fold({ f(it) }, { Success(it) })
 inline fun <T> Result<T>.recover(crossinline f: (Throwable) -> T): Result<T> = fold({ Success(f(it)) }, { Success(it) })
 inline fun <T> Result<T>.transform(crossinline s: (T) -> Result<T>, crossinline f: (Throwable) -> Result<T>): Result<T> = fold({ f(it) }, { flatMap(s) })
+
+fun <T> T.asSuccess(): Result<T> = Result.success(this)
+fun <T> Throwable.asFailure(): Result<T> = Result.failure(this)
+fun <T> (() -> T).asResult(): Result<T> = Result(this)

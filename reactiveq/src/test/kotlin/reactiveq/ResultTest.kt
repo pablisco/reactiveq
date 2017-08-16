@@ -27,6 +27,25 @@ class ResultTest {
                 .isEqualTo(Result.failure<String>(expectedException))
         }
 
+        @Test fun `should create success from extension method`() {
+            val success = "success".asSuccess()
+
+            assertThat(success).isEqualTo(Result.success("success"))
+        }
+
+        @Test fun `should create failure from extension method`() {
+            val expectedError = Throwable()
+            val failure = expectedError.asFailure<String>()
+
+            assertThat(failure).isEqualTo(Result.failure<String>(expectedError))
+        }
+
+        @Test fun `should create result from function`() {
+            val result = { "result" }.asResult()
+
+            assertThat(result).isEqualTo(Result { "result" })
+        }
+
     }
 
     class SuccessTest {
