@@ -19,8 +19,8 @@ class ReactiveQ {
 
     private fun <T> createConnection(type: Class<T>): InternalConnection<T> =
         when {
-            !DoNotReportCounter::class.java.isAssignableFrom(type) -> InternalConnection(type, { send(it) })
-            else -> InternalConnection(type, { })
+            type.isAnnotationPresent(DoNotReport::class.java) -> InternalConnection(type, { })
+            else -> InternalConnection(type, { send(it) })
         }
 
     @Suppress("UNCHECKED_CAST")
@@ -52,5 +52,5 @@ inline operator fun <R> ReactiveQ.invoke(f: ReactiveQ.() -> R) : R = f(this)
  *
  * When a type extends this interface and a new reactor is registered on
  */
-interface DoNotReportCounter
+annotation class DoNotReport
 
