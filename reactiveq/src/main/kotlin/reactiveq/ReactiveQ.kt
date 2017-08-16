@@ -2,7 +2,7 @@ package reactiveq
 
 class ReactiveQ {
 
-    private val connections = mutableMapOf<Class<*>, InternalConnection<*>>()
+    private val connections = concurrentMapOf<Class<*>, InternalConnection<*>>()
 
     @Suppress("UNCHECKED_CAST")
     fun <T> connect(type: Class<T>): Connection<T> =

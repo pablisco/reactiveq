@@ -7,9 +7,9 @@ internal class InternalConnection<T>(
     private val reportReactorCounter: (ReactorCounter<T>) -> Unit
 ) : Connection<T> {
 
-    private val onSendReactors = mutableSetOf<(T) -> Unit>()
-    private val onFetchReactors = mutableSetOf<() -> T>()
-    private val onQueryReactors = mutableSetOf<TypedReactor<T, *>>()
+    private val onSendReactors = concurrentSetOf<(T) -> Unit>()
+    private val onFetchReactors = concurrentSetOf<() -> T>()
+    private val onQueryReactors = concurrentSetOf<TypedReactor<T, *>>()
 
     override fun onSend(onSendReactor: (T) -> Unit): Closeable =
         onSendReactors.addWithClosable(onSendReactor)
@@ -56,3 +56,4 @@ internal class InternalConnection<T>(
         ))
 
 }
+
