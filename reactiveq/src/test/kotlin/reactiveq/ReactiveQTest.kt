@@ -55,7 +55,7 @@ class ReactiveQTest {
 
         val results = queue.fetch<String>()
 
-        assertThat(results).containsOnly(Result("some value"))
+        assertThat(results).containsOnly(Result.success("some value"))
     }
 
     @Test fun `should receive exception from emitter`() {
@@ -64,7 +64,7 @@ class ReactiveQTest {
         queue.connect<String>().onFetch { throw expectedException }
         val items = queue.fetch<String>()
 
-        assertThat(items).containsOnly(Result(expectedException))
+        assertThat(items).containsOnly(Result.failure(expectedException))
     }
 
     @Test fun `should be able to query Responder`() {

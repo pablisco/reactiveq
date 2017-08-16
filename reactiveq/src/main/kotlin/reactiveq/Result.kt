@@ -13,11 +13,9 @@ sealed class Result<out T> {
         operator fun <T> invoke(f: () -> T) : Result<T> =
             try { Success(f()) } catch (e: Throwable) { Failure(e) }
 
-        operator fun <T> invoke(t: T) : Result<T> =
-            try { Success(t) } catch (e: Throwable) { Failure(e) }
+        fun <T> success(t: T) : Result<T> = Success(t)
 
-        operator fun <T> invoke(e: Throwable) : Result<T> =
-            Failure(e)
+        fun <T> failure(e: Throwable) : Result<T> = Failure(e)
     }
 
     fun <B> fold(fa: (Throwable) -> B, fb: (T) -> B): B =

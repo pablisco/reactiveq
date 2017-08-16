@@ -15,7 +15,7 @@ class ResultTest {
 
             assertThat(result)
                 .isInstanceOf(Result.Success::class.java)
-                .isEqualTo(Result("success"))
+                .isEqualTo(Result.success("success"))
         }
 
         @Test fun `should create failure from function`() {
@@ -24,25 +24,25 @@ class ResultTest {
 
             assertThat(result)
                 .isInstanceOf(Result.Failure::class.java)
-                .isEqualTo(Result<String>(expectedException))
+                .isEqualTo(Result.failure<String>(expectedException))
         }
 
     }
 
     class SuccessTest {
 
-        private val success = Result("success")
+        private val success = Result.success("success")
 
         @Test fun `should map with new content`() {
             val result = success.map { "other $it" }
 
-            assertThat(result).isEqualTo(Result("other success"))
+            assertThat(result).isEqualTo(Result.success("other success"))
         }
 
         @Test fun `should flatMap to new Success`() {
-            val result = success.flatMap { Result(123) }
+            val result = success.flatMap { Result.success(123) }
 
-            assertThat(result).isEqualTo(Result(123))
+            assertThat(result).isEqualTo(Result.success(123))
         }
 
         @Test fun `should get success value on getOrElse`() {
@@ -52,7 +52,7 @@ class ResultTest {
         }
 
         @Test fun `should provide Success on recoveryWith`() {
-            val result = success.recoverWith { Result(123) }
+            val result = success.recoverWith { Result.success(123) }
 
             assertThat(result).isEqualTo(success)
         }
@@ -64,16 +64,16 @@ class ResultTest {
         }
 
         @Test fun `should transform success`() {
-            val result = success.transform({ Result("other $it") }, { throw it })
+            val result = success.transform({ Result.success("other $it") }, { throw it })
 
-            assertThat(result).isEqualTo(Result("other success"))
+            assertThat(result).isEqualTo(Result.success("other success"))
         }
 
     }
 
     class FailureTest {
 
-        private val failure = Result<String>(Throwable())
+        private val failure = Result.failure<String>(Throwable())
 
         @Test fun `should map to same Failure`() {
             val result = failure.map { "other $it" }
@@ -82,7 +82,7 @@ class ResultTest {
         }
 
         @Test fun `should flatMap to same Failure`() {
-            val result = failure.flatMap { Result(123) }
+            val result = failure.flatMap { Result.success(123) }
 
             assertThat(result).isEqualTo(failure)
         }
@@ -94,21 +94,21 @@ class ResultTest {
         }
 
         @Test fun `should provide new Success on recoveryWith`() {
-            val result = failure.recoverWith { Result(123) }
+            val result = failure.recoverWith { Result.success(123) }
 
-            assertThat(result).isEqualTo(Result(123))
+            assertThat(result).isEqualTo(Result.success(123))
         }
 
         @Test fun `should provide new Success on recover`() {
             val result = failure.recover { 123 }
 
-            assertThat(result).isEqualTo(Result(123))
+            assertThat(result).isEqualTo(Result.success(123))
         }
 
         @Test fun `should transform failure`() {
-            val result = failure.transform({ Result("other $it") }, { Result("alternative") })
+            val result = failure.transform({ Result.success("other $it") }, { Result.success("alternative") })
 
-            assertThat(result).isEqualTo(Result("alternative"))
+            assertThat(result).isEqualTo(Result.success("alternative"))
         }
 
     }
