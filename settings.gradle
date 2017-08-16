@@ -1,1 +1,1 @@
-include ':demos:app', ':reactiveq', ':demos:javademo'
+include ':demos:reactiveq', ':demos:javademo', ':reactivetodo'
