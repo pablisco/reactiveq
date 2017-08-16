@@ -1,1 +1,3 @@
+rootProject.name = 'reactiveQ'
+
 include ':demos:reactiveq', ':demos:javademo', ':reactivetodo'
