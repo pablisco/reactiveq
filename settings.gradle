@@ -1,3 +1,4 @@
 rootProject.name = 'reactiveQ'
 
-include ':demos:reactiveq', ':demos:javademo', ':demos:reactivetodo'
+include ':reactiveq', ':demos:javademo', ':demos:notes:android', ':demos:notes', 'demos:notes:core'
+

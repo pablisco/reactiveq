@@ -1,13 +1,12 @@
 package reactiveq
 
-import org.assertj.core.api.Assertions.*
+import kategory.Try
+import kategory.getOrElse
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.fail
 import org.junit.Test
 
 class ReactiveQTest {
-
-    companion object {
-        private val INVALID_COUNTER = ReactorCounter<String>(-1, -1, -1)
-    }
 
     private val queue: ReactiveQ = ReactiveQ()
 
@@ -15,8 +14,8 @@ class ReactiveQTest {
         var text : String? = null
 
         queue {
-            connect<String>().onSend { text = it }
-            send("some value")
+            onPush<String> { text = it }
+            push("some value")
         }
 
         assertThat(text).isEqualTo("some value")
@@ -26,11 +25,11 @@ class ReactiveQTest {
         var text : String? = "not null"
 
         queue {
-            val closable = connect<String>().onSend { text = it }
+            val closable = onPush<String> { text = it }
             closable.close()
         }
 
-        queue.send("some value")
+        queue.push("some value")
 
         assertThat(text).isEqualTo("not null")
     }
@@ -40,10 +39,10 @@ class ReactiveQTest {
         var number : Int? = null
 
         queue {
-            connect<String>().onSend { text = it }
-            connect<Int>().onSend { number = it }
-            send("some value")
-            send(123)
+            onPush<String> { text = it }
+            onPush<Int> { number = it }
+            push("some value")
+            push(123)
         }
 
         assertThat(text).isEqualTo("some value")
@@ -51,65 +50,76 @@ class ReactiveQTest {
     }
 
     @Test fun `should emit values from emitter`() {
-        queue.connect<String>().onFetch { "some value" }
+        queue.onPull<String> {
+            withoutQuery { "some value" }
+        }
 
-        val results = queue.fetch<String>()
+        val results = queue.pull<String>().withoutQuery()
 
-        assertThat(results).containsOnly(Result.success("some value"))
+        assertThat(results).containsOnly(Try.pure("some value"))
     }
 
     @Test fun `should receive exception from emitter`() {
         val expectedException = Exception()
 
-        queue.connect<String>().onFetch { throw expectedException }
-        val items = queue.fetch<String>()
+        queue.onPullWithoutQuery<String> { throw expectedException }
+        val items = queue.pull<String>().withoutQuery()
 
-        assertThat(items).containsOnly(Result.failure(expectedException))
+        assertThat(items).containsOnly(Try.raise(expectedException))
     }
 
     @Test fun `should be able to query Responder`() {
-        queue.connect<String>().onQuery { query: String -> "some $query" }
-
-        val result = queue.query<String, String>("value")
-        assertThat(result).containsOnly(Result.Success("some value"))
-    }
-
-    @Test fun `should notify when Reactor added`() {
-        var counter: ReactorCounter<String> = INVALID_COUNTER
-
-        queue {
-            connect<ReactorCounter<String>>().onSend { counter = it }
-            connect<String>().onSend {  }
+        queue.onPull<String> {
+            withQuery<String> { "some $it" }
         }
 
-        assertThat(counter).isEqualTo(ReactorCounter<String>(1, 0, 0))
-    }
-
-    @Test fun `should report when Reactor is removed`() {
-        val counters: MutableList<ReactorCounter<String>> = mutableListOf()
-
-        queue {
-            connect<ReactorCounter<String>>().onSend { counters += it }
-            val closeable = connect<String>().onSend { }
-            closeable.close()
-        }
-
-        assertThat(counters).containsOnly(
-            ReactorCounter(0, 0, 0),
-            ReactorCounter(1, 0, 0),
-            ReactorCounter(0, 0, 0)
-        )
+        val result = queue.pull<String>().withQuery("value")
+        assertThat(result).containsOnly(Try.pure("some value"))
     }
 
     @Test fun `should react to variant reactors`() {
         var text: CharSequence? = null
 
         queue {
-            connect<CharSequence>().onSend { text = it }
-            send("some value")
+            onPush<CharSequence> { text = it }
+            push("some value")
         }
 
         assertThat(text).isEqualTo("some value")
+    }
+
+    data class A<out T>(val value: T)
+
+    @Test fun `should differentiate generics for push`() {
+        val stringList = mutableListOf<A<String>>()
+        val intList = mutableListOf<A<Int>>()
+
+        queue {
+            onPush<A<String>> { stringList += it }
+            onPush<A<Int>> { intList += it }
+            push(A("some value"))
+            push(A(123))
+        }
+
+        assertThat(stringList).containsOnly(A("some value"))
+        assertThat(intList).containsOnly(A(123))
+    }
+
+    @Test fun `should differentiate generics for pull`() {
+        queue {
+            onPullWithoutQuery { A("some value") }
+            onPullWithoutQuery { A(123) }
+        }
+
+        val strings = queue.pullWithoutQuery<A<String>>()
+        val ints = queue.pullWithoutQuery<A<Int>>()
+
+        assertThat(strings).hasSize(1)
+        assertThat(ints).hasSize(1)
+        val actualString = strings.first().getOrElse { fail("No sting provided") }
+        val actualInt = ints.first().getOrElse { fail("No int provided") }
+        assertThat(actualString).isEqualTo(A("some value"))
+        assertThat(actualInt).isEqualTo(A(123))
     }
 
 }
